@@ -1,11 +1,44 @@
 {
-  "name": "read_file",
-  "description": "Read a file.",
+  "name": "code_read_file",
+  "description": "Read one text file of Ledgerline's private codebase, by its exact path relative to the repository root, as code_search prints it in a hit's path. Paths are case-sensitive and must match a file exactly: src/Report.ts and src/report.ts are different files. Returns JSON: path, start_line, end_line, total_lines, truncated, next_start_line (where to continue, or null), and content. A file that exists but is empty returns content '' with total_lines 0: the file has nothing in it, which is an answer, not an error. A path that names no file is an error that lists the nearest existing paths; files under config/ are never readable. Each response is capped: at most 150 lines in concise format and at most 400 lines in detailed, and at most 20,000 characters either way; when truncated is true, call again with start_line set to next_start_line to read on.",
   "input_schema": {
     "type": "object",
+    "additionalProperties": false,
+    "required": ["path", "start_line", "response_format"],
     "properties": {
-      "path": {"type": "string", "description": "File path"}
-    },
-    "required": ["path"]
+      "path": {
+        "type": "string",
+        "description": "The file's path relative to the repository root, exactly as a code_search hit prints it, case included: 'src/api/errors.ts', 'README.md'. No leading /, no .., no glob characters. Copy it from a result rather than guessing from the issue: a near-miss name is a different file or none."
+      },
+      "start_line": {
+        "type": ["integer", "null"],
+        "description": "The first line to return, counting from 1. null reads from the top, which is right for a first read. Set it to a previous response's next_start_line to continue a truncated file, or near a code_search hit's line to read just that region of a long file."
+      },
+      "response_format": {
+        "type": "string",
+        "enum": ["concise", "detailed"],
+        "description": "concise (the cheap default) returns up to 150 lines of plain text, enough for most source files. detailed returns up to 400 lines, each prefixed with its line number to match code_search hits: about three times the tokens, worth it for a long file or when you must cite line numbers."
+      }
+    }
+  },
+  "strict": true,
+  "examples": [
+    {"input": {"path": "src/api/errors.ts", "start_line": null, "response_format": "concise"},
+     "note": "Typical: a path copied from a code_search hit, read from the top."},
+    {"input": {"path": "src/Report.ts", "start_line": 151, "response_format": "detailed"},
+     "note": "Hard: the repository has src/Report.ts, src/report.tsx and src/reports.ts, so the path's case and extension must match the hit exactly; start_line 151 continues a first read that came back truncated with next_start_line 151."}
+  ],
+  "result_schema": {
+    "type": "object",
+    "required": ["path", "start_line", "end_line", "total_lines", "truncated", "next_start_line", "content"],
+    "properties": {
+      "path": {"type": "string"},
+      "start_line": {"type": "integer"},
+      "end_line": {"type": "integer"},
+      "total_lines": {"type": "integer"},
+      "truncated": {"type": "boolean"},
+      "next_start_line": {"type": ["integer", "null"]},
+      "content": {"type": "string"}
+    }
   }
 }

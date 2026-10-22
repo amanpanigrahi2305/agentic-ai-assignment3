@@ -14,6 +14,6 @@ Removals are logged like additions.
 - **Constrained:** every tool call to a step of a validated plan; revisions to steps not yet done; the comment to drafts that pass the second pass
 
 ## Assignment 3
-- **Added:**
-- **Removed:**
-- **Constrained:**
+- **Added:** five namespaced tool definitions with behaviour-describing parameters, two examples each, capped JSON results and strict mode; a boundary validator before every call and a result-shape check after it; repair-fact errors, transient retries in code, and protocol errors routed to the harness log; pulls_open_draft as a plan step before the comment; harness-derived idempotency keys, a check before every write, a verify step with three exits, and a fail-closed pre-call hook; the call record, one line per attempt
+- **Removed:** free-text tool descriptions; free-form filters (`filter`, `deep`) in favour of a glob, enums and nullable fields; the file-system existence check in read_file; "No matches." as the answer to a malformed query
+- **Constrained:** every write to be safe to retry (same key on every attempt, at most three attempts, escalated when it cannot be confirmed); the plan to end with exactly one PR step and then exactly one comment step; every argument to pass the boundary before a tool runs

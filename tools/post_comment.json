@@ -1,12 +1,62 @@
 {
-  "name": "post_comment",
-  "description": "Post a comment on an issue.",
+  "name": "tracker_post_comment",
+  "description": "Post the triage comment on an issue in Ledgerline's issue tracker. The comment is public: whoever filed the issue reads it, and it cannot be taken back, so post it once, last, after everything else in the triage is done. The body's first two lines must be 'label: <bug | feature | question | docs>' and 'file: <path relative to the repository root, or none>'; anything after them is a short note for the reader. Returns JSON: comment (its identifier, such as comment-12), issue (such as issue-4192), and status, posted or already_posted. already_posted means this same comment had already reached the tracker, for instance before a timeout, and nothing new was written: it is a success, not an error, and there is nothing to retry. This tool never returns an empty result: it posts, or it returns an error that says what to fix. The body is capped at 4,000 characters.",
   "input_schema": {
     "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "number",
+      "body"
+    ],
     "properties": {
-      "number": {"type": "integer", "description": "Issue number"},
-      "body": {"type": "string", "description": "Comment text"}
+      "number": {
+        "type": "integer",
+        "description": "The issue's number as a bare integer, 4192: the issue this triage read with tracker_read_issue, and no other."
+      },
+      "body": {
+        "type": "string",
+        "description": "The comment, at most 4,000 characters. Line 1: 'label: ' and one of bug (something that should work does not), feature (a request for new behaviour), question (the reporter asks how something works and nothing needs to change) or docs (the documentation is wrong or missing). Line 2: 'file: ' and the one file most responsible, exactly as a code_search hit or a code_read_file path printed it, or 'none' for a question. Then, optionally, a blank line and two or three sentences for the reader."
+      }
+    }
+  },
+  "strict": true,
+  "examples": [
+    {
+      "input": {
+        "number": 4192,
+        "body": "label: bug\nfile: src/export/csv.ts\n\nThe header row is written after the first page of rows instead of before it."
+      },
+      "note": "Typical: a bug, the file a search found, and one sentence for the reader."
     },
-    "required": ["number", "body"]
+    {
+      "input": {
+        "number": 4417,
+        "body": "label: question\nfile: none\n\nNothing needs to change: the behaviour you describe is how scheduled exports are meant to work."
+      },
+      "note": "Hard: a question names no file, so line 2 is 'file: none', not an empty line and not a guess. A bug, feature or docs label always names a file."
+    }
+  ],
+  "result_schema": {
+    "type": "object",
+    "required": [
+      "comment",
+      "issue",
+      "status"
+    ],
+    "properties": {
+      "comment": {
+        "type": "string"
+      },
+      "issue": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "posted",
+          "already_posted"
+        ]
+      }
+    }
   }
 }

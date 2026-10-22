@@ -1,14 +1,88 @@
 {
-  "name": "open_pr",
-  "description": "Open a pull request.",
+  "name": "pulls_open_draft",
+  "description": "Open one draft pull request on Ledgerline's repository for the file a triage names, before the triage comment is posted. The mock remote needs no commits: the pull request is a branch, a title and a body that proposes the change in prose. Open none at all when the triage's file is none. Returns JSON: pr (its identifier, such as pr-7), issue (such as issue-4192), branch, state (open), draft (true) and status, opened or already_open. already_open means an open pull request from this branch already exists in this run, for instance one that committed before a timeout, and nothing new was opened: it is a success, not an error, and there is nothing to retry. This tool never returns an empty result: it opens, or it returns an error that says what to fix. The title is capped at 120 characters and the body at 4,000.",
   "input_schema": {
     "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "number",
+      "branch",
+      "title",
+      "body"
+    ],
     "properties": {
-      "number": {"type": "integer", "description": "Issue number"},
-      "branch": {"type": "string", "description": "Branch"},
-      "title": {"type": "string", "description": "Title"},
-      "body": {"type": "string", "description": "Body"}
+      "number": {
+        "type": "integer",
+        "description": "The issue's number as a bare integer, 4192: the issue this triage read, and no other."
+      },
+      "branch": {
+        "type": "string",
+        "description": "Always 'repomind/issue-<number>' for the same number, such as repomind/issue-4192. Any other branch is refused, so that every run's pull request can be found again by its branch."
+      },
+      "title": {
+        "type": "string",
+        "description": "One line, at most 120 characters, saying what the change does: 'Write the CSV header before the first page of rows'. Not the issue's title copied, and no issue number: the branch already carries it."
+      },
+      "body": {
+        "type": "string",
+        "description": "At most 4,000 characters. Its first line is 'File: <path>', the file the triage names, exactly as the comment's file: line gives it. Then two to five sentences of prose: what is wrong in that file and what the change would do. No code is needed: nothing here is compiled or reviewed for correctness."
+      }
+    }
+  },
+  "strict": true,
+  "examples": [
+    {
+      "input": {
+        "number": 4192,
+        "branch": "repomind/issue-4192",
+        "title": "Write the CSV header before the first page of rows",
+        "body": "File: src/export/csv.ts\n\nThe header row is appended after the first page has been flushed, so it lands in the middle of the file. Write it once, before any rows, and keep the page loop unchanged."
+      },
+      "note": "Typical: the triage named a file, so one draft pull request from repomind/issue-<number>, its body naming that file first."
     },
-    "required": ["number", "branch", "title", "body"]
+    {
+      "input": {
+        "number": 4417,
+        "branch": "repomind/issue-4417",
+        "title": "Document the page size limit of the reports endpoint",
+        "body": "File: docs/API.md\n\nThe reports endpoint caps page_size at 500, but the API reference does not say so. Add the limit and the error a larger value returns."
+      },
+      "note": "Hard: a docs triage still opens a pull request, for the document to fix. The branch follows the issue number exactly; when the triage's file is none, do not call this tool at all."
+    }
+  ],
+  "result_schema": {
+    "type": "object",
+    "required": [
+      "pr",
+      "issue",
+      "branch",
+      "state",
+      "draft",
+      "status"
+    ],
+    "properties": {
+      "pr": {
+        "type": "string"
+      },
+      "issue": {
+        "type": "string"
+      },
+      "branch": {
+        "type": "string"
+      },
+      "state": {
+        "type": "string"
+      },
+      "draft": {
+        "type": "boolean"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "opened",
+          "already_open"
+        ]
+      }
+    }
   }
 }

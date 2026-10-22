@@ -31,12 +31,22 @@ def _prompt(rel: str) -> str:
 
 
 def _tool_list(tool_schemas: list[dict]) -> str:
+    """The tools as the planner reads them: name, what it does, and every argument with its
+    type or its values. The examples the registry renders into a description are left out:
+    the planner fixes which tool a step calls, and the step's fill call sees the examples."""
     lines = []
     for tool in tool_schemas:
         props = (tool.get("input_schema") or {}).get("properties") or {}
-        args = ", ".join(f"{name} ({spec.get('type', 'any')})" for name, spec in props.items())
-        lines.append(f"- {tool['name']}: {tool.get('description', '')} Arguments: {args or 'none'}.")
+        args = ", ".join(f"{name} ({'|'.join(spec['enum']) if spec.get('enum') else _type(spec)})"
+                         for name, spec in props.items())
+        about = str(tool.get("description", "")).split("\n\nExample", 1)[0]
+        lines.append(f"- {tool['name']}: {about} Arguments: {args or 'none'}.")
     return "\n".join(lines)
+
+
+def _type(spec: dict) -> str:
+    kind = spec.get("type", "any")
+    return " or ".join(kind) if isinstance(kind, list) else str(kind)
 
 
 def _submitted(response) -> list[dict]:

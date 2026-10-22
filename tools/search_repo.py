@@ -1,18 +1,21 @@
-"""search_repo: literal, case-insensitive text search over the private codebase.
+"""code_search (module search_repo): literal, case-insensitive text search over the private codebase.
 
 Its definition is search_repo.json. It reads a prebuilt index,
 fixtures/search_index/index.json, of every text file under fixtures/repo except
-config/, and the index records when it was built. With deep set, it reads the files
-themselves instead. Results come back in path order, one line each, as
-path:line: excerpt, then one line saying when the index was built, how many lines
-matched and how many are shown: the truncation and the index's age.
+config/, and the index records when it was built. With source "live", it reads the
+files themselves instead. Results come back as JSON, hits in path order, with
+count (every match), shown, truncated, index_built_at and index_age: what the
+starter's last line reported, as fields.
 
 **Malformed**, for Assignment 3 (Part A, task 1), is any of three things:
   1. a query that is empty or only whitespace;
   2. a query longer than MAX_QUERY_CHARS;
   3. a filter that is not a valid glob (glob_problem, below).
-This stub answers a malformed query exactly as it answers one that matched nothing,
-"No matches.": the defect Part A removes. The two must differ in the raw response.
+The starter answered a malformed query exactly as it answered one that matched
+nothing, "No matches.". Now the two differ in the raw response: a search that
+matches nothing is a success, JSON with count 0 and query_valid true; a malformed
+one raises ToolError, which the registry returns as is_error with a repair fact.
+check() holds the same rules for the registry's boundary check, before dispatch.
 """
 
 from __future__ import annotations
@@ -55,12 +58,26 @@ def problem(query, filter=None) -> str | None:
     """Why this search is malformed, or None when it is well-formed."""
     text = str(query or "")
     if not text.strip():
-        return "the query is empty"
+        return ("query is empty or only whitespace: give 1 to 200 characters of literal text to find, "
+                "such as an identifier or an error message")
     if len(text) > MAX_QUERY_CHARS:
-        return f"the query is {len(text)} characters long; the cap is {MAX_QUERY_CHARS}"
+        return (f"query is {len(text):,} characters long; the cap is {MAX_QUERY_CHARS}: search for one identifier "
+                "or one short phrase from it, not a whole passage")
     if filter not in (None, ""):
-        return glob_problem(str(filter))
+        why = glob_problem(str(filter))
+        if why:
+            return f"path_glob {str(filter)[:80]!r} is not a valid glob: {why}. Use null to search everything"
     return None
+
+
+def check(args: dict) -> list[str]:
+    """The content rules the schema cannot carry (lengths, ranges, globs), for the boundary."""
+    out = [why for why in (problem(args.get("query")), problem("x", args.get("path_glob")) if args.get("path_glob")
+                           else None) if why]       # each field on its own, so every one at fault is named
+    n = args.get("max_results")
+    if isinstance(n, int) and not 1 <= n <= HARD_CAP:
+        out.append(f"max_results is {n}; it must be 1 to {HARD_CAP} (10 for a first search)")
+    return out
 
 
 def _expand(pattern: str) -> list[str]:
@@ -101,20 +118,45 @@ def age(built_at: str, now: float | None = None) -> str:
     return "today" if days < 1 else f"{days} day{'s' if days != 1 else ''} ago"
 
 
-def run(ctx, query, max_results=10, filter=None, deep=False):
-    if problem(query, filter) is not None:
-        return "No matches."
+CONCISE_CHARS, DETAILED_CHARS, CONTEXT_CHARS = 100, 240, 160
+
+
+def run(ctx, query, path_glob, max_results, source, response_format):
+    from tools import ToolError
+
+    why = problem(query, path_glob)
+    if why is not None:
+        raise ToolError(f"Malformed search: {why}. This query will fail however often it is retried; "
+                        "fix it and call again.")
     repo_root = Path(ctx.repo_root)
-    if deep:
-        files, source = _disk(repo_root), "read from disk"
+    if source == "live":
+        files, built, age_text = _disk(repo_root), None, None
     else:
         index = load_index(repo_root.parent.parent)
-        files, source = index["files"], f"index built {index['built_at']}, {age(index['built_at'])}"
+        files, built, age_text = index["files"], index["built_at"], age(index["built_at"])
     needle = str(query).strip().lower()
     limit = max(1, min(int(max_results), HARD_CAP))
-    hits = [f"{rel}:{number}: {line.strip()[:160]}"
-            for rel, lines in sorted(files.items()) if _matches(rel, filter)
-            for number, line in enumerate(lines, 1) if needle in line.lower()]
-    if not hits:
-        return "No matches."
-    return "\n".join(hits[:limit]) + f"\n[{source}; {len(hits)} matches, {min(limit, len(hits))} shown]"
+    detailed = response_format == "detailed"
+    matches = [(rel, number, lines) for rel, lines in sorted(files.items()) if _matches(rel, path_glob)
+               for number, line in enumerate(lines, 1) if needle in line.lower()]
+    hits = []
+    for rel, number, lines in matches[:limit]:
+        hit = {"path": rel, "line": number,
+               "text": lines[number - 1].strip()[:DETAILED_CHARS if detailed else CONCISE_CHARS]}
+        if detailed:
+            hit["before"] = lines[number - 2].strip()[:CONTEXT_CHARS] if number > 1 else None
+            hit["after"] = lines[number].strip()[:CONTEXT_CHARS] if number < len(lines) else None
+        hits.append(hit)
+    where = f"index built {built}, {age_text}" if built else "read from disk"
+    if not matches:
+        note = (f"{where}; no line matches {needle!r}"
+                + (f" in files matching {path_glob!r}" if path_glob else "")
+                + ": the query is valid; try a shorter or different term")
+    else:
+        note = f"{where}; {len(matches)} matches, {len(hits)} shown"
+        if len(matches) > len(hits):
+            note += "; truncated: narrow the query or set path_glob to see the rest"
+    return json.dumps({"query": str(query), "query_valid": True, "count": len(matches), "shown": len(hits),
+                       "truncated": len(matches) > len(hits), "hits": hits,
+                       "source": "live" if source == "live" else "index", "index_built_at": built,
+                       "index_age": age_text, "path_glob": path_glob, "note": note})

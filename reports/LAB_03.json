@@ -1,19 +1,81 @@
 {
   "lab": "03",
   "strict": {
-    "tools": null,
-    "optional_params": null,
-    "union_types": null,
-    "compiles": null
+    "tools": 5,
+    "optional_params": 0,
+    "union_types": 2,
+    "compiles": true
   },
   "failures": {
-    "read_issue": {"transient": [], "permanent": [], "ambiguous": []},
-    "search": {"transient": [], "permanent": [], "ambiguous": []},
-    "read_file": {"transient": [], "permanent": [], "ambiguous": []},
-    "comment": {"transient": [], "permanent": [], "ambiguous": []},
-    "open_pr": {"transient": [], "permanent": [], "ambiguous": []}
+    "read_issue": {
+      "transient": [
+        "the tracker's issue store is busy or the read is interrupted (sqlite OperationalError, ConnectionError, InterruptedError): retried in code up to 3 times"
+      ],
+      "permanent": [
+        "the issue number names no issue",
+        "number is not an integer, or is not positive (rejected at the boundary)",
+        "an unknown or missing argument (rejected at the boundary)"
+      ],
+      "ambiguous": []
+    },
+    "search": {
+      "transient": [
+        "the search index or a file cannot be read for a moment (OperationalError, ConnectionError, InterruptedError): retried in code up to 3 times"
+      ],
+      "permanent": [
+        "empty or whitespace-only query",
+        "query longer than 200 characters",
+        "path_glob that is not a valid glob",
+        "max_results outside 1 to 20",
+        "source or response_format not one of its enum values"
+      ],
+      "ambiguous": []
+    },
+    "read_file": {
+      "transient": [
+        "a file read interrupted or the disk busy (InterruptedError, BlockingIOError): retried in code up to 3 times"
+      ],
+      "permanent": [
+        "the path is not on the repository's file list (case-sensitive; near misses named)",
+        "the path is under config/, never readable",
+        "the path leaves the repository (leading / or ..) or is a glob",
+        "the file is not text",
+        "start_line past the end of the file, or below 1"
+      ],
+      "ambiguous": []
+    },
+    "comment": {
+      "transient": [
+        "the tracker times out before the write is dispatched, or the check before the write cannot connect for a moment"
+      ],
+      "permanent": [
+        "the issue number names no issue",
+        "the body is empty, over 4,000 characters, or lacks a valid label: and file: line (rejected at the boundary)",
+        "a hook denies the write (for example a body that looks like a credential)"
+      ],
+      "ambiguous": [
+        "the tracker times out after the write was dispatched (TrackerTimeout): it may have committed; read back by key, then retry with the same key or escalate",
+        "the read-back after a timeout fails too (ReadbackUnavailable): escalate"
+      ]
+    },
+    "open_pr": {
+      "transient": [
+        "the tracker times out before the write is dispatched, or the check before the write cannot connect for a moment"
+      ],
+      "permanent": [
+        "the issue number names no issue",
+        "branch is not repomind/issue-<number>",
+        "title empty, over 120 characters or over several lines",
+        "body empty or over 4,000 characters",
+        "a hook denies the write"
+      ],
+      "ambiguous": [
+        "the tracker times out after the write was dispatched (TrackerTimeout): it may have committed; read back by branch, then retry with the same key or escalate",
+        "the read-back after a timeout fails too (ReadbackUnavailable): escalate"
+      ]
+    }
   },
-  "protocol_error_policy": null,
+  "protocol_error_policy": "end_run",
   "surface": {
     "tokens_before": null,
     "tokens_after": null,
@@ -25,9 +87,23 @@
     "cost_per_run_all_five": null
   },
   "writes": {
-    "harness": {"runs": null, "comments_per_run_max": null, "duplicate_comment_runs": null, "prs_correct_runs": null,
-                "committed_timeouts": null, "escalated": null, "triage_passes": null},
-    "control": {"runs": null, "comments_per_run_max": null, "duplicate_comment_runs": null, "prs_correct_runs": null,
-                "committed_timeouts": null, "escalated": null, "triage_passes": null}
+    "harness": {
+      "runs": null,
+      "comments_per_run_max": null,
+      "duplicate_comment_runs": null,
+      "prs_correct_runs": null,
+      "committed_timeouts": null,
+      "escalated": null,
+      "triage_passes": null
+    },
+    "control": {
+      "runs": null,
+      "comments_per_run_max": null,
+      "duplicate_comment_runs": null,
+      "prs_correct_runs": null,
+      "committed_timeouts": null,
+      "escalated": null,
+      "triage_passes": null
+    }
   }
 }

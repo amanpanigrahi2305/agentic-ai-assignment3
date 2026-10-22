@@ -62,9 +62,14 @@ def run_loop(client, tools, system: str, user_message: str, bounds: Bounds, trac
         for call in response.tool_calls:
             try:
                 result = tools.call(call.name, call.input)
-            except Exception as exc:  # a tool that raises, rather than reporting an error
-                trace.end("tool_error", detail=f"{call.name}: {exc}")
+            except Exception as exc:  # a protocol error (logged by the registry), or a tool that raises
+                # Protocol errors are "for you": the end_run policy (Assignment 3, Part B). The
+                # model is never asked again, so it never sees the error or argues with it.
+                trace.end("tool_error", detail=f"{type(exc).__name__}: see the run's harness log")
                 return last_text
             trace.tool_call(step, call, result)
+            if getattr(result, "escalate", False):   # a write nobody can confirm: a person decides
+                trace.end("escalated", detail=f"{call.name}: {result.content[:200]}")
+                return last_text
             results.append(tool_result(call, result.content, result.is_error))
         messages.append({"role": "user", "content": results})

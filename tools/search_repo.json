@@ -1,14 +1,143 @@
 {
-  "name": "search_repo",
-  "description": "Search the code.",
+  "name": "code_search",
+  "description": "Search the text of Ledgerline's private codebase (src/, docs/, test/ and the root files; never config/) for lines containing a literal string. Matching is a case-insensitive substring match over the text of each line, never over file names, and never a regular expression, so search for an identifier, a quoted error message or a word a developer would write in the code. Use it to find which file holds the code an issue describes, then read that file with code_read_file. Returns JSON: query (echoed back), query_valid, count (every matching line), shown (how many hits this response carries), truncated (true when count > shown), hits (a list of {path, line, text}, in path order), source, index_built_at and index_age (how old the index is; null for a live read), and note. An empty result, count 0 with hits [] and query_valid true, means the query was well-formed and no line matches it: try a shorter or different term, not the same one again. A malformed call (an empty or whitespace-only query, a query over 200 characters, a path_glob that is not a valid glob, max_results outside 1 to 20) is an error, never an empty result. Each response is capped at max_results hits, at most 20; when truncated is true, narrow the query or set path_glob rather than asking for more.",
   "input_schema": {
     "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "query",
+      "path_glob",
+      "max_results",
+      "source",
+      "response_format"
+    ],
     "properties": {
-      "query": {"type": "string", "description": "Text to look for"},
-      "max_results": {"type": "integer", "description": "How many results. Default 10."},
-      "filter": {"type": "string", "description": "Optional filter expression"},
-      "deep": {"type": "boolean", "description": "Whether to do a deep search. Default false."}
+      "query": {
+        "type": "string",
+        "description": "The literal text to find, 1 to 200 characters, matched case-insensitively inside each line. One identifier or one short phrase finds the most: 'writeHeader' or 'Missing script', not a sentence. No operators, quotes, wildcards or regular expressions: every character is matched as written."
+      },
+      "path_glob": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Limits the search to files whose path, relative to the repository root, matches this glob. Ledgerline is TypeScript: its code is under src/ as .ts and .tsx files, its tests under test/, its documentation in README.md and docs/*.md, so 'src/**/*.ts', 'src/**/*.tsx', '{README.md,docs/**}'; there are no .py or .js files. Uses * ? [ ] { } and no spaces. null searches every readable file, which is the right first search; set a glob when a first search returned too many hits outside the area you care about. A glob that matches no file gives count 0, not an error."
+      },
+      "max_results": {
+        "type": "integer",
+        "description": "How many hits to return, 1 to 20. Each hit costs about 30 tokens in concise format and about 90 in detailed. 10 is right for a first search; 20 when a common term needs a wider view. count always reports every match, whatever this is."
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "index",
+          "live"
+        ],
+        "description": "index reads the prebuilt search index: fast, and the default to choose; index_age says when it was built, and a file changed since then may be missed or stale. live reads every file from disk now: slower, and only worth it when index_age is old and you suspect the index is missing recent code."
+      },
+      "response_format": {
+        "type": "string",
+        "enum": [
+          "concise",
+          "detailed"
+        ],
+        "description": "concise (the cheap default) gives each hit's path, line number and up to 100 characters of the line. detailed adds up to 240 characters of the line and the line before and after it: about three times the tokens, worth it only to tell apart several hits that look alike."
+      }
+    }
+  },
+  "strict": true,
+  "examples": [
+    {
+      "input": {
+        "query": "writeHeader",
+        "path_glob": null,
+        "max_results": 10,
+        "source": "index",
+        "response_format": "concise"
+      },
+      "note": "Typical: one identifier, the whole codebase, the index, concise hits."
     },
-    "required": ["query"]
+    {
+      "input": {
+        "query": "Missing script",
+        "path_glob": "{README.md,docs/**}",
+        "max_results": 20,
+        "source": "live",
+        "response_format": "detailed"
+      },
+      "note": "Hard: an error message quoted in an issue, searched only in the documentation because the issue is about the docs; detailed shows the surrounding lines. A path_glob uses braces for alternatives, never a comma-separated list or a regular expression."
+    }
+  ],
+  "result_schema": {
+    "type": "object",
+    "required": [
+      "query",
+      "query_valid",
+      "count",
+      "shown",
+      "truncated",
+      "hits",
+      "source",
+      "index_built_at",
+      "index_age",
+      "path_glob",
+      "note"
+    ],
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "query_valid": {
+        "type": "boolean"
+      },
+      "count": {
+        "type": "integer"
+      },
+      "shown": {
+        "type": "integer"
+      },
+      "truncated": {
+        "type": "boolean"
+      },
+      "hits": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "path",
+            "line",
+            "text"
+          ]
+        }
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "index",
+          "live"
+        ]
+      },
+      "index_built_at": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "index_age": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "path_glob": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "note": {
+        "type": "string"
+      }
+    }
   }
 }
