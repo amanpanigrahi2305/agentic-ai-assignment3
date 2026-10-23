@@ -233,9 +233,25 @@ class ToolRegistry:
                 if match is not None:
                     args[key] = match
         problems = [self._explain(line, props) for line in errors(args, schema)]
-        if not problems and hasattr(module, "check"):
+        if not problems and hasattr(module, "check"):   # the content rules need well-typed arguments
             problems = list(module.check(args))
+        problems += [f"{key} still holds the plan's placeholder \"$fill\": replace it with a real value"
+                     for key, value in args.items() if isinstance(value, str) and "$fill" in value]
         return args, problems
+
+    def faulty(self, name: str, tool_input: dict) -> list[str]:
+        """The arguments the boundary would refuse, by name: every field a problem line starts
+        with, and every field the schema does not have. The executor re-fills these on a repair."""
+        props = (self._tools[name][0].get("input_schema") or {}).get("properties") or {}
+        bad = [k for k in tool_input if k not in props]
+        _, problems = self.validate(name, tool_input)
+        if bad:                                    # an unknown field hides the content rules: run them too
+            problems += self.validate(name, {k: v for k, v in tool_input.items() if k in props})[1]
+        for line in problems:
+            head = re.match(r"[A-Za-z_]+", line.strip())
+            if head and head.group() in props and head.group() not in bad:
+                bad.append(head.group())
+        return bad
 
     @staticmethod
     def _explain(line: str, props: dict) -> str:
@@ -309,7 +325,7 @@ class ToolRegistry:
             key = uuid.uuid4().hex if on["key_mode"] == "uuid" else derived
             t0 = time.monotonic()
             try:                                   # check before you execute: one read
-                existing = self._existing(role, args, key)
+                existing = self._read_back(role, args, key)
             except ReadbackUnavailable as exc:
                 return self._escalate(name, start, f"the check before attempt {attempt} could not read the "
                                                    f"tracker ({exc})")
@@ -326,7 +342,7 @@ class ToolRegistry:
                                  f"{exc}; VERIFY=off: retrying blind", t0)
                     continue
                 try:                               # verify: did the effect happen?
-                    found = self._existing(role, args, key)
+                    found = self._read_back(role, args, key)
                 except ReadbackUnavailable as unreadable:
                     self._record(name, args, plan_step, key, attempt, "timeout", True,
                                  f"{exc}; read back failed ({unreadable}): cannot tell, escalating", t0)
@@ -353,6 +369,20 @@ class ToolRegistry:
             self._record(name, args, plan_step, key, attempt, "ok", False, bad or content, t0)
             return ToolResult(content, False, time.monotonic() - start, "ok")
         return self._escalate(name, start, f"still unconfirmed after {WRITE_ATTEMPTS} attempts")
+
+    def _read_back(self, role: str, args: dict, key: str):
+        """_existing, with its transient failures retried in code. One that persists means the
+        harness cannot tell whether the write happened: ReadbackUnavailable, so it escalates."""
+        from harness.tracker import ReadbackUnavailable
+        for attempt in range(1, READ_ATTEMPTS + 1):
+            try:
+                return self._existing(role, args, key)
+            except ReadbackUnavailable:
+                raise
+            except TRANSIENT as exc:
+                if attempt == READ_ATTEMPTS:
+                    raise ReadbackUnavailable(f"the read failed {READ_ATTEMPTS} times ({type(exc).__name__})")
+                time.sleep(BACKOFF_S * attempt)
 
     def _existing(self, role: str, args: dict, key: str):
         """This run's row for this write, if it is already there: an open PR from the same

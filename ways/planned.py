@@ -193,15 +193,22 @@ class Executor:
         confirm (escalated)."""
         try:
             result = self.ctx.call_tool(self.calls, step["tool"], args, plan_step=step.get("id"))
-            if result.outcome == "rejected" and to_fill:
-                self.ctx.trace.event("repair", step=step.get("id"), tool=step["tool"], error=result.content[:300])
-                fixed = {k: v for k, v in args.items() if k not in to_fill}
-                again = self.fill(step, {**fixed, **{k: FILL for k in to_fill}}, to_fill,
+            if result.outcome == "rejected" and role(step["tool"]) != "comment":
+                # Re-fill every field the boundary refused, as well as the "$fill" ones: a value the
+                # plan fixed can be the bad one, and it must not win over the model's repair.
+                schema = next((t for t in self.ctx.tools.schemas if t["name"] == step["tool"]), None) or {}
+                props = (schema.get("input_schema") or {}).get("properties") or {}
+                bad = self.ctx.tools.faulty(step["tool"], args)
+                keys = list(dict.fromkeys(to_fill + [k for k in bad if k in props]))
+                self.ctx.trace.event("repair", step=step.get("id"), tool=step["tool"], fields=keys,
+                                     error=result.content[:300])
+                fixed = {k: v for k, v in args.items() if k not in keys and k in props}
+                again = self.fill(step, {**fixed, **{k: FILL for k in keys}}, keys,
                                   note=(note + "\n\n" if note else "") + "Your last call was rejected: "
                                   + result.content + " Call the tool again with every argument fixed.")
                 if again is not None:
                     args.clear()
-                    args.update(again)
+                    args.update(self.pr_args(again) if role(step["tool"]) == "open_pr" else again)
                     result = self.ctx.call_tool(self.calls, step["tool"], args, plan_step=step.get("id"))
         except ProtocolError as exc:
             self.record(step, args, None, "protocol")

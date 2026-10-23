@@ -18,7 +18,10 @@ Submit the plan with submit_plan, once. Each step:
   example "{\"number\": 4191}". Write "$fill" for any value that depends on what an
   earlier step finds: search terms, a file path, the pull request's title and
   body, the comment's text. The issue number, and the pull request's branch,
-  repomind/issue-<number>, are the values you know now.
+  repomind/issue-<number>, are the values you know now: fix those two and write
+  "$fill" for every other argument (queries, path globs, result limits, sources,
+  formats, paths, start lines), because the executor fills them with each
+  tool's full definition in front of it, and you have only its summary.
 - depends_on: the ids of earlier steps whose results this step uses. Never a later
   step.
 - expected_result: what the step returns when it worked, something a program could

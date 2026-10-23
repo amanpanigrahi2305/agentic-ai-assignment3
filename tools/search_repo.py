@@ -51,6 +51,12 @@ def glob_problem(pattern: str) -> str | None:
         return "a glob's [ and ] must pair up"
     if pattern.count("{") != pattern.count("}"):
         return "a glob's { and } must pair up"
+    braces = 0
+    for ch in pattern:
+        braces += {"{": 1, "}": -1}.get(ch, 0)
+        if ch == "," and braces == 0:
+            return ("a comma-separated list is not one glob: write alternatives inside braces, "
+                    "such as 'src/**/*.{ts,tsx}' or '{README.md,docs/**}'")
     return None
 
 
