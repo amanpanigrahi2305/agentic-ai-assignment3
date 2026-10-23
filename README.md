@@ -169,7 +169,8 @@ tracker's database.
 - **The plan is logged before anything runs**, as in Assignment 2.
 - **Every number carries its run count and its spread.**
 - **Prompts live in `prompts/`**, and a layer held only by a prompt is empty.
-
+- **Disclose AI assistance** in each report: which tool, what it wrote, what you
+  checked.
 
 ## Submitting an assignment
 

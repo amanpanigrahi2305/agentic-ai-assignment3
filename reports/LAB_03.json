@@ -9,7 +9,7 @@
   "failures": {
     "read_issue": {
       "transient": [
-        "the tracker's issue store is busy or the read is interrupted (sqlite OperationalError, ConnectionError, InterruptedError): retried in code up to 3 times"
+        "reading the issue's file is interrupted (InterruptedError, BlockingIOError): up to 3 attempts in code"
       ],
       "permanent": [
         "the issue number names no issue",
@@ -20,20 +20,22 @@
     },
     "search": {
       "transient": [
-        "the search index or a file cannot be read for a moment (OperationalError, ConnectionError, InterruptedError): retried in code up to 3 times"
+        "the search index or a file cannot be read for a moment: up to 3 attempts in code"
       ],
       "permanent": [
         "empty or whitespace-only query",
         "query longer than 200 characters",
         "path_glob that is not a valid glob",
         "max_results outside 1 to 20",
-        "source or response_format not one of its enum values"
+        "source or response_format not one of its enum values",
+        "a comma- or space-separated list given as path_glob",
+        "an argument still holding the plan's $fill placeholder"
       ],
       "ambiguous": []
     },
     "read_file": {
       "transient": [
-        "a file read interrupted or the disk busy (InterruptedError, BlockingIOError): retried in code up to 3 times"
+        "a file read interrupted or the disk busy (InterruptedError, BlockingIOError): up to 3 attempts in code"
       ],
       "permanent": [
         "the path is not on the repository's file list (case-sensitive; near misses named)",
@@ -46,7 +48,7 @@
     },
     "comment": {
       "transient": [
-        "the tracker times out before the write is dispatched, or the check before the write cannot connect for a moment"
+        "a check before an attempt, or the read-back after a timeout, fails for a moment (OperationalError, ConnectionError): up to 3 attempts in code, then the run escalates"
       ],
       "permanent": [
         "the issue number names no issue",
@@ -60,7 +62,7 @@
     },
     "open_pr": {
       "transient": [
-        "the tracker times out before the write is dispatched, or the check before the write cannot connect for a moment"
+        "a check before an attempt, or the read-back after a timeout, fails for a moment (OperationalError, ConnectionError): up to 3 attempts in code, then the run escalates"
       ],
       "permanent": [
         "the issue number names no issue",
@@ -77,33 +79,33 @@
   },
   "protocol_error_policy": "end_run",
   "surface": {
-    "tokens_before": null,
-    "tokens_after": null,
-    "list_tokens_before": null,
-    "list_tokens_after": null,
-    "calls_per_run": null,
-    "cost_per_run_before": null,
-    "cost_per_run_after": null,
-    "cost_per_run_all_five": null
+    "tokens_before": 456,
+    "tokens_after": 3460,
+    "list_tokens_before": 115,
+    "list_tokens_after": 1187,
+    "calls_per_run": 8.0,
+    "cost_per_run_before": 0.0001785,
+    "cost_per_run_after": 0.0015289,
+    "cost_per_run_all_five": 0.005536
   },
   "writes": {
     "harness": {
-      "runs": null,
-      "comments_per_run_max": null,
-      "duplicate_comment_runs": null,
-      "prs_correct_runs": null,
-      "committed_timeouts": null,
-      "escalated": null,
-      "triage_passes": null
+      "runs": 12,
+      "comments_per_run_max": 1,
+      "duplicate_comment_runs": 0,
+      "prs_correct_runs": 12,
+      "committed_timeouts": 9,
+      "escalated": 0,
+      "triage_passes": 4
     },
     "control": {
-      "runs": null,
-      "comments_per_run_max": null,
-      "duplicate_comment_runs": null,
-      "prs_correct_runs": null,
-      "committed_timeouts": null,
-      "escalated": null,
-      "triage_passes": null
+      "runs": 12,
+      "comments_per_run_max": 3,
+      "duplicate_comment_runs": 6,
+      "prs_correct_runs": 12,
+      "committed_timeouts": 15,
+      "escalated": 1,
+      "triage_passes": 1
     }
   }
 }

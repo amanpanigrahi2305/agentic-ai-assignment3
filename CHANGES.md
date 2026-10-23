@@ -14,6 +14,9 @@ Removals are logged like additions.
 - **Constrained:** every tool call to a step of a validated plan; revisions to steps not yet done; the comment to drafts that pass the second pass
 
 ## Assignment 3
-- **Added:** five namespaced tool definitions with behaviour-describing parameters, two examples each, capped JSON results and strict mode; a boundary validator before every call and a result-shape check after it; repair-fact errors, transient retries in code, and protocol errors routed to the harness log; pulls_open_draft as a plan step before the comment; harness-derived idempotency keys, a check before every write, a verify step with three exits, and a fail-closed pre-call hook; the call record, one line per attempt
-- **Removed:** free-text tool descriptions; free-form filters (`filter`, `deep`) in favour of a glob, enums and nullable fields; the file-system existence check in read_file; "No matches." as the answer to a malformed query
-- **Constrained:** every write to be safe to retry (same key on every attempt, at most three attempts, escalated when it cannot be confirmed); the plan to end with exactly one PR step and then exactly one comment step; every argument to pass the boundary before a tool runs
+
+- **Added:** Five namespaced tool definitions with parameters that describe their behavior, along with two examples for each tool, capped JSON results, and strict mode. Added a boundary validator before every tool call and a result-shape check afterward. Repair-fact errors, transient retries in code, and protocol errors are handled through the harness log. Also added `pulls_open_draft` as a planning step before commenting, harness-generated idempotency keys, a check before every write, a verification step with three possible outcomes, a fail-closed pre-call hook, and a call record with one line per attempt.
+
+- **Removed:** Free-text tool descriptions and free-form filters (`filter`, `deep`), replacing them with a glob, enums, and nullable fields. Removed the file-system existence check from `read_file` and stopped using `"No matches."` as the response to malformed queries.
+
+- **Constrained:** Every write can be safely retried using the same idempotency key, with a maximum of three attempts. If the result still cannot be confirmed, the operation is escalated. The plan must end with exactly one PR step followed by exactly one comment step, and every argument must pass boundary validation before a tool runs.

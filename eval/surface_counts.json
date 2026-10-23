@@ -1,0 +1,42 @@
+{
+  "model": "ministral-14b-2512",
+  "baseline_prompt_tokens": 23,
+  "before": {
+    "names": [
+      "read_issue",
+      "search_repo",
+      "read_file",
+      "post_comment",
+      "open_pr"
+    ],
+    "together": 456,
+    "alone": {
+      "read_issue": 68,
+      "search": 131,
+      "read_file": 64,
+      "comment": 86,
+      "open_pr": 119
+    },
+    "list": 115,
+    "list_chars": 438
+  },
+  "after": {
+    "names": [
+      "tracker_read_issue",
+      "code_search",
+      "code_read_file",
+      "tracker_post_comment",
+      "pulls_open_draft"
+    ],
+    "together": 3460,
+    "alone": {
+      "read_issue": 375,
+      "search": 1038,
+      "read_file": 661,
+      "comment": 612,
+      "open_pr": 786
+    },
+    "list": 1187,
+    "list_chars": 4890
+  }
+}
